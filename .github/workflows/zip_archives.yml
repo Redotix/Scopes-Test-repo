@@ -22,7 +22,6 @@ jobs:
       uses: docker://antonyurchenko/git-release:v5
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      env:
         CHANGELOG_FILE: none
       with:
         args: mod/main*.zip

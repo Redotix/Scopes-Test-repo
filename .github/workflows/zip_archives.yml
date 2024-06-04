@@ -12,4 +12,6 @@ jobs:
         with:
           files: mod/main
           dest: main.zip
+      - run: |
+          echo $GITHUB_WORKSPACE
 

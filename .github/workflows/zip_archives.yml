@@ -2,6 +2,9 @@
 name: Zip archives
 
 on:
+  push:
+    tags:
+    - "v*"
   workflow_dispatch:
 
 jobs:
@@ -9,10 +12,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@main
-    - name: Archive Release
+    - name: Zip Files
       uses: thedoctor0/zip-release@0.7.5
       with:
         type: 'zip'
         filename: 'main.zip'
         path: 'mod/main'
-
+    - name: Create Git Release
+      uses: docker://antonyurchenko/git-release:v5
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        args: mod/main*.zip

@@ -28,10 +28,7 @@ jobs:
           filename: 'main.zip'
           path: 'mod/main'
           
-      - name: Upload Release
-        uses: ncipollo/release-action@v1.14.0
-        with:
-            artifacts: "main.zip"
-            token: ${{ secrets.GITHUB_TOKEN }}    
-            generateReleaseNotes: 'True'
-            tag: 'Release'
+      - name: Zip Folder
+        run: zip -r main.zip .
+      - name: Release to Github
+        run: echo "Release"

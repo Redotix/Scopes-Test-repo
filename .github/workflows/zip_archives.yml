@@ -8,10 +8,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: vimtor/action-zip@v1.2
-        with:
-          files: mod/main
-          dest: main.zip
-      - run: |
-          echo $GITHUB_WORKSPACE
+        - name: Archive Release
+              uses: thedoctor0/zip-release@0.7.5
+              with:
+                type: 'zip'
+                filename: 'main.zip'
+                path: 'mod/main'
 

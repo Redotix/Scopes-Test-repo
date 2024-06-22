@@ -3,7 +3,7 @@ name: Release on Folder Update
 on:
   push:
     paths:
-      - 'mod/compat2/**' # Hardcoded path for the workflow trigger
+      - 'mod/compat2/**'
 
 permissions:
   contents: write
@@ -12,39 +12,45 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      FOLDER_PATH: mod/compat2 # Define your folder path here as an environment variable
+      FOLDER_PATH: mod/compat2
       GITHUB_TOKEN: ${{ secrets.TOKEN }}
     steps:
     - uses: actions/checkout@v2
 
     - name: Zip the folder
-      run: |
-        zip -r ${FOLDER_PATH}.zip ${FOLDER_PATH}/
+      run: zip -r ${FOLDER_PATH}.zip ${FOLDER_PATH}/
       shell: bash
 
-    - name: Get the current version
+    - name: Get the highest current version
       id: versioning
       run: |
-        VERSION=$(git tag --list "${FOLDER_PATH}-v*" --sort=-v:refname | head -n 1 | sed "s|${FOLDER_PATH}-v||")
-        if [[ -z "$VERSION" ]]; then
-          VERSION=0
+        HIGHEST_TAG=$(git tag --list "${FOLDER_PATH}-v*" --sort=-v:refname | head -n 1 | sed "s|${FOLDER_PATH}-v||")
+        if [[ -z "$HIGHEST_TAG" ]]; then
+          HIGHEST_TAG=0
         fi
-        echo "::set-output name=version::$VERSION"
+        echo "Highest existing tag version: $HIGHEST_TAG"
+        echo "::set-output name=version::$HIGHEST_TAG"
 
     - name: Increment version and create tag
       id: new_version
       run: |
-        VERSION=${{ steps.versioning.outputs.version }}
-        NEW_VERSION=$((VERSION + 1))
-        echo "::set-output name=version::$NEW_VERSION"
-        echo "NEW_TAG=${FOLDER_PATH}-v$NEW_VERSION" >> $GITHUB_ENV
+        VERSION=$(( ${HIGHEST_TAG} + 1 ))
+        echo "New version: $VERSION"
+        echo "::set-output name=version::$VERSION"
+        NEW_TAG="${FOLDER_PATH}-v${VERSION}"
+        echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
 
-    - name: Delete previous tag
+    - name: Delete previous tag if exists (locally and remotely)
       run: |
-        if git rev-parse "${FOLDER_PATH}-v${{ steps.versioning.outputs.version }}" >/dev/null 2>&1; then
-          git tag -d "${FOLDER_PATH}-v${{ steps.versioning.outputs.version }}"
-          git push --delete origin "${FOLDER_PATH}-v${{ steps.versioning.outputs.version }}"
+        if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
+          echo "Deleting existing tag: $NEW_TAG"
+          git tag -d $NEW_TAG
+          git push --delete origin $NEW_TAG
+        else
+          echo "No existing tag to delete."
         fi
+      env:
+        NEW_TAG: ${{ env.NEW_TAG }}
 
     - name: Create Release
       id: create_release

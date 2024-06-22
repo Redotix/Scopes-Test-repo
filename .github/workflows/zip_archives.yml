@@ -56,8 +56,8 @@ jobs:
         PREVIOUS_TAG="${FOLDER_PATH}-v${{ env.PREVIOUS_VERSION }}"
         echo "Attempting to delete previous tag: $PREVIOUS_TAG"
         # Add your command to delete the tag here, for example:
-        git tag -d "$PREVIOUS_TAG"
-        git push --delete origin "$PREVIOUS_TAG"
+        git tag -d "$PREVIOUS_TAG" || true
+        git push --delete origin "$PREVIOUS_TAG" || true
 
     - name: Increment version and create tag
       id: new_version

@@ -21,7 +21,7 @@ jobs:
     - name: Get the current folder version
       id: versioning
       run: |
-        VERSION=$(git tag --list "${FOLDER_PATH}-v*" --sort=-v:refname | head -n 1 | sed "s/${FOLDER_PATH}-v//")
+        VERSION=$(git tag --list "${FOLDER_PATH}-v*" --sort=-v:refname | head -n 1 | sed "s|${FOLDER_PATH}-v||")
         echo "::set-output name=version::$VERSION"
       
     - name: Increment version and create tag

@@ -3,21 +3,41 @@ name: Release on Folder Update
 on:
   push:
     paths:
-      - '${{ env.mod/compat2 }}/**'
-  workflow_dispatch:
+      - 'mod/compat2/**' # Hardcoded path for the workflow trigger
 
 jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      FOLDER_PATH: your-folder # Define your folder path here as an environment variable
+      FOLDER_PATH: mod/compat2 # Define your folder path here as an environment variable
     steps:
     - uses: actions/checkout@v2
 
     - name: Zip the folder
       run: |
-        zip -r $FOLDER_PATH-v*.zip $FOLDER_PATH/
+        zip -r ${FOLDER_PATH}.zip ${FOLDER_PATH}/
       shell: bash
+
+    - name: Get the current folder version
+      id: versioning
+      run: |
+        VERSION=$(git tag --list "${FOLDER_PATH}-v*" --sort=-v:refname | head -n 1 | sed "s/${FOLDER_PATH}-v//")
+        echo "::set-output name=version::$VERSION"
+      
+    - name: Increment version and create tag
+      id: new_version
+      run: |
+        VERSION=${{ steps.versioning.outputs.version }}
+        if [[ -z "$VERSION" ]]; then
+          VERSION="0.0.0"
+        fi
+        MAJOR=$(echo $VERSION | cut -d. -f1)
+        MINOR=$(echo $VERSION | cut -d. -f2)
+        PATCH=$(echo $VERSION | cut -d. -f3)
+        NEW_PATCH=$((PATCH + 1))
+        NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
+        echo "::set-output name=version::$NEW_VERSION"
+        echo "NEW_TAG=${FOLDER_PATH}-v$NEW_VERSION" >> $GITHUB_ENV
 
     - name: Create Release
       id: create_release
@@ -25,8 +45,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: $FOLDER_PATH-${{ github.run_number }}
-        release_name: Release $FOLDER_PATH-v${{ github.run_number }}
+        tag_name: ${{ env.NEW_TAG }}
+        release_name: Release ${{ env.NEW_TAG }}
         draft: false
         prerelease: false
         body: |
@@ -39,6 +59,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./$FOLDER_PATH-v*.zip
-        asset_name: $FOLDER_PATH-v${{ github.run_number }}.zip
+        asset_path: ./${FOLDER_PATH}.zip
+        asset_name: ${FOLDER_PATH}-v${{ steps.new_version.outputs.version }}.zip
         asset_content_type: application/zip

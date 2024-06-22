@@ -51,8 +51,8 @@ jobs:
       id: commit_description
       run: |
         COMMIT_MESSAGE="${{ github.event.head_commit.message }}"
-        # Replace line breaks with \\n to preserve them
-        DESCRIPTION=$(echo "$COMMIT_MESSAGE" | sed -n '/^$/,$p' | sed '1d' | sed ':a;N;$!ba;s/\n/\\n/g')
+        # Replace line breaks with <br> to preserve them in HTML
+        DESCRIPTION=$(echo "$COMMIT_MESSAGE" | sed -n '/^$/,$p' | sed '1d' | sed ':a;N;$!ba;s/\n/<br>/g')
         if [[ -z "$DESCRIPTION" ]]; then
           DESCRIPTION="No detailed description provided."
         fi
@@ -69,7 +69,7 @@ jobs:
         draft: false
         prerelease: false
         body: |
-          Changes in this Release:
+          Changes in this Release:<br>
           ${{ steps.commit_description.outputs.description }}
 
     - name: Upload Release Asset

@@ -54,6 +54,10 @@ jobs:
         echo "::set-output name=version::$NEW_VERSION"
         NEW_TAG="${FOLDER_PATH}-v${NEW_VERSION}"
         echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
+        
+    - name: Fetch Last Commit Description
+      run: echo "LAST_COMMIT_DESCRIPTION=$(git log -1 --pretty=format:'%b')" >> $GITHUB_ENV
+      shell: bash
 
     - name: Create Release
       id: create_release
@@ -67,7 +71,7 @@ jobs:
         prerelease: false
         body: |
           Changes in this Release:
-          - $(git log -1 --pretty=format:"%b")
+          - ${{ env.LAST_COMMIT_DESCRIPTION }}
 
     - name: Upload Release Asset
       uses: actions/upload-release-asset@v1

@@ -1,27 +1,58 @@
-
-name: Zip archives
+name: Zip and Release Specific Folder
 
 on:
-  push:
-    tags:
-    - "v*"
   workflow_dispatch:
 
 jobs:
-  build:
+  build-and-release:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@main
-    - name: Zip Files
-      uses: thedoctor0/zip-release@0.7.5
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+      
+    - name: Set up Git
+      run: git config --global user.email "action@github.com" && git config --global user.name "GitHub Action"
+
+    - name: Zip Specific Folder
+      run: |
+        mkdir release
+        cp -R mod/compat2/* release/
+        cd release
+        zip -r../compat2.zip.
+
+    - name: Tag Release
+      id: tag
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git tag compat2
+        echo "::set-output name=ref::refs/tags/$TAG_NAME"
+      
+    - name: Push Tag
+      uses: ad-m/github-push-action@master
       with:
-        type: 'zip'
-        filename: 'main.zip'
-        path: 'mod/main'
-    - name: Create Git Release
-      uses: docker://antonyurchenko/git-release:v5
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        ref: ${{ steps.tag.outputs.ref }}
+        force: true
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+      with:
+        tag_name: ${{ steps.tag.outputs.ref }}
+        release_name: Release ${{ steps.tag.outputs.ref }}
+        draft: false
+        prerelease: false
+
+    - name: Upload Release Asset
+      id: upload-release-asset 
+      uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        CHANGELOG_FILE: none
       with:
-        args: mod/main*.zip
+        upload_url: ${{ steps.create_release.outputs.upload_url }} # This is required for the asset upload
+        asset_path:./Compat2.zip
+        asset_name: Compat2.zip
+        asset_content_type: application/zip

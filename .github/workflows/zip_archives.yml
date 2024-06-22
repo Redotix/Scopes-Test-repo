@@ -47,9 +47,15 @@ jobs:
         NEW_TAG="${FOLDER_PATH}-v${NEW_VERSION}"
         echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
         
-    - name: Fetch Last Commit Description
-      run: echo "LAST_COMMIT_DESCRIPTION=\$(git log -1 --pretty=format:'%b' | sed 's/'\''/\'\"\'\"\'/g')" >> $GITHUB_ENV
-      shell: bash
+    - name: Extract commit description
+      id: commit_description
+      run: |
+        COMMIT_MESSAGE="${{ github.event.head_commit.message }}"
+        DESCRIPTION=$(echo "$COMMIT_MESSAGE" | sed -n '/^$/,$p' | sed '1d')
+        if [[ -z "$DESCRIPTION" ]]; then
+          DESCRIPTION="No detailed description provided."
+        fi
+        echo "::set-output name=description::$DESCRIPTION"
 
     - name: Create Release
       id: create_release
@@ -63,7 +69,7 @@ jobs:
         prerelease: false
         body: |
           Changes in this Release:
-          - ${{ env.LAST_COMMIT_DESCRIPTION }}
+          ${{ steps.commit_description.outputs.description }}
 
     - name: Upload Release Asset
       uses: actions/upload-release-asset@v1

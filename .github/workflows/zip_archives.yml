@@ -53,6 +53,9 @@ jobs:
         | jq '.id')
         echo "Release ID: $RELEASE_ID"
         echo "::set-output name=release_id::$RELEASE_ID"
+        curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+        https://api.github.com/repos/${{ github.repository }}/releases/tags/${PREVIOUS_TAG} \
+        | tee response.json
 
     - name: Delete Release
       if: steps.get_release.outputs.release_id

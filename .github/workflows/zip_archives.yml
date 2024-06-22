@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FOLDER_PATH: mod/compat2 # Define your folder path here as an environment variable
+      GITHUB_TOKEN: ${{ secrets.TOKEN }}
     steps:
     - uses: actions/checkout@v2
 

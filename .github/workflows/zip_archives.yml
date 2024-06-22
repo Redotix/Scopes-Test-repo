@@ -20,7 +20,7 @@ jobs:
         mkdir release
         cp -R mod/compat2/* release/
         cd release
-        zip -r ./compat2.zip.
+        zip -r ./compat2.zip *
 
     - name: Tag Release
       id: tag

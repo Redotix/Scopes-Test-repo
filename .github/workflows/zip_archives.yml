@@ -50,10 +50,9 @@ jobs:
       run: |
         PREVIOUS_TAG="${FOLDER_PATH}-v${{ env.PREVIOUS_VERSION }}"
         echo "Attempting to delete previous tag: $PREVIOUS_TAG"
-        if git rev-parse "$PREVIOUS_TAG" >/dev/null 2>&1; then
-          echo "Deleting existing tag: $PREVIOUS_TAG"
-          git tag -d $PREVIOUS_TAG
-          git push --delete origin $PREVIOUS_TAG
+        # Add your command to delete the tag here, for example:
+        git tag -d "$PREVIOUS_TAG"
+        git push --delete origin "$PREVIOUS_TAG"
         else
           echo "No existing tag to delete."
 

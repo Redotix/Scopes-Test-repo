@@ -33,7 +33,7 @@ jobs:
     - name: Push Tag
       uses: ad-m/github-push-action@master
       with:
-        TOKEN: ${{ secrets.TOKEN }}
+        github_token: ${{ secrets.TOKEN }}
         ref: ${{ steps.tag.outputs.ref }}
         force: true
 
@@ -41,7 +41,7 @@ jobs:
       id: create_release
       uses: actions/create-release@v1
       env:
-        TOKEN: ${{ secrets.TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        github_token: ${{ secrets.TOKEN }} # This token is provided by Actions, you do not need to create your own token
       with:
         tag_name: ${{ steps.tag.outputs.ref }}
         release_name: Release ${{ steps.tag.outputs.ref }}
@@ -52,7 +52,7 @@ jobs:
       id: upload-release-asset 
       uses: actions/upload-release-asset@v1
       env:
-        TOKEN: ${{ secrets.TOKEN }}
+        github_token: ${{ secrets.TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }} # This is required for the asset upload
         asset_path: ./Compat2.zip

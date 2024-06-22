@@ -1,59 +1,44 @@
-name: Zip and Release Specific Folder
+name: Release on Folder Update
 
 on:
   push:
-    branches:
-      - main
+    paths:
+      - '${{ env.mod/compat2 }}/**'
+  workflow_dispatch:
 
 jobs:
-  build-and-release:
+  build:
     runs-on: ubuntu-latest
+    env:
+      FOLDER_PATH: your-folder # Define your folder path here as an environment variable
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v2
-      
-    - name: Set up Git
-      run: git config --global user.email "action@github.com" && git config --global user.name "GitHub Action"
+    - uses: actions/checkout@v2
 
-    - name: Zip Specific Folder
+    - name: Zip the folder
       run: |
-        mkdir release
-        cp -R mod/compat2/* release/
-        cd release
-        zip -r ./compat2.zip *
-
-    - name: Tag Release
-      id: tag
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git tag compat2
-        echo "::set-output name=ref::refs/tags/$TAG_NAME"
-      
-    - name: Push Tag
-      uses: ad-m/github-push-action@master
-      with:
-        github_token: ${{ secrets.TOKEN }}
-        force: true
+        zip -r $FOLDER_PATH-v*.zip $FOLDER_PATH/
+      shell: bash
 
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
       env:
-        github_token: ${{ secrets.TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ steps.tag.outputs.ref }}
-        release_name: Release ${{ steps.tag.outputs.ref }}
+        tag_name: $FOLDER_PATH-${{ github.run_number }}
+        release_name: Release $FOLDER_PATH-v${{ github.run_number }}
         draft: false
         prerelease: false
+        body: |
+          Changes in this Release:
+          - ${{ github.event.head_commit.message }}
 
     - name: Upload Release Asset
-      id: upload-release-asset 
       uses: actions/upload-release-asset@v1
       env:
-        github_token: ${{ secrets.TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }} # This is required for the asset upload
-        asset_path: ./Compat2.zip
-        asset_name: Compat2.zip
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./$FOLDER_PATH-v*.zip
+        asset_name: $FOLDER_PATH-v${{ github.run_number }}.zip
         asset_content_type: application/zip

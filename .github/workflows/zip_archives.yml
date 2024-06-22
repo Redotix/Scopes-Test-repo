@@ -14,7 +14,6 @@ jobs:
     env:
       FOLDER_PATH: mod/compat2 # Define your folder path here as an environment variable
       GITHUB_TOKEN: ${{ secrets.TOKEN }}
-      STATIC_TAG_NAME: release-mod-compat2 # Static tag name without version
     steps:
     - uses: actions/checkout@v2
 
@@ -23,16 +22,29 @@ jobs:
         zip -r ${FOLDER_PATH}.zip ${FOLDER_PATH}/
       shell: bash
 
-    - name: Create or Update Tag
+    - name: Get the current version
+      id: versioning
       run: |
-        if git rev-parse "$STATIC_TAG_NAME" >/dev/null 2>&1; then
-          git tag -d $STATIC_TAG_NAME
-          git push --delete origin $STATIC_TAG_NAME
+        VERSION=$(git tag --list "${FOLDER_PATH}-v*" --sort=-v:refname | head -n 1 | sed "s|${FOLDER_PATH}-v||")
+        if [[ -z "$VERSION" ]]; then
+          VERSION=0
         fi
-        git tag $STATIC_TAG_NAME
-        git push origin $STATIC_TAG_NAME
-      env:
-        STATIC_TAG_NAME: ${{ env.STATIC_TAG_NAME }}
+        echo "::set-output name=version::$VERSION"
+
+    - name: Increment version and create tag
+      id: new_version
+      run: |
+        VERSION=${{ steps.versioning.outputs.version }}
+        NEW_VERSION=$((VERSION + 1))
+        echo "::set-output name=version::$NEW_VERSION"
+        echo "NEW_TAG=${FOLDER_PATH}-v$NEW_VERSION" >> $GITHUB_ENV
+
+    - name: Delete previous tag
+      run: |
+        if git rev-parse "${FOLDER_PATH}-v${{ steps.versioning.outputs.version }}" >/dev/null 2>&1; then
+          git tag -d "${FOLDER_PATH}-v${{ steps.versioning.outputs.version }}"
+          git push --delete origin "${FOLDER_PATH}-v${{ steps.versioning.outputs.version }}"
+        fi
 
     - name: Create Release
       id: create_release
@@ -40,8 +52,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ env.STATIC_TAG_NAME }}
-        release_name: Release ${{ env.STATIC_TAG_NAME }}
+        tag_name: ${{ env.NEW_TAG }}
+        release_name: Release ${{ env.NEW_TAG }}
         draft: false
         prerelease: false
         body: |
@@ -55,5 +67,5 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./${{ env.FOLDER_PATH }}.zip
-        asset_name: ${{ env.FOLDER_PATH }}.zip
+        asset_name: ${{ env.FOLDER_PATH }}-v${{ steps.new_version.outputs.version }}.zip
         asset_content_type: application/zip

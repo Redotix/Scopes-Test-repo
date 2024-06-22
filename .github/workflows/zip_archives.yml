@@ -1,94 +1,64 @@
 name: Release on Folder Update
+on: push: paths: - 'mod/compat2/**'
+permissions: contents: write issues: write
+jobs: build: runs-on: ubuntu-latest env: FOLDER_PATH: mod/compat2 GITHUB_TOKEN: ${{ secrets.TOKEN }} steps: - uses: actions/checkout@v2
+- name: Zip the folder
+  run: zip -r ${FOLDER_PATH}.zip ${FOLDER_PATH}/
+  shell: bash
 
-on:
-  push:
-    paths:
-      - 'mod/compat2/**'
+- name: Fetch all tags
+  run: git fetch --tags
 
-permissions:
-  contents: write
-  issues: write
+- name: Get the highest current version
+  id: versioning
+  run: |
+    HIGHEST_TAG=$(git tag --list "${FOLDER_PATH}-v*" --sort=-v:refname | head -n 1 | sed "s|${FOLDER_PATH}-v||")
+    if [[ -z "$HIGHEST_TAG" ]]; then
+      HIGHEST_TAG=0
+    fi
+    echo "Highest existing tag version: $HIGHEST_TAG"
+    echo "::set-output name=version::$HIGHEST_TAG"
+    PREVIOUS_VERSION=$HIGHEST_TAG
+    echo "PREVIOUS_VERSION=$PREVIOUS_VERSION" >> $GITHUB_ENV
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    env:
-      FOLDER_PATH: mod/compat2
-      GITHUB_TOKEN: ${{ secrets.TOKEN }}
-    steps:
-    - uses: actions/checkout@v2
+- name: Delete previous tag if exists (locally and remotely)
+  run: |
+    PREVIOUS_TAG="${FOLDER_PATH}-v${{ env.PREVIOUS_VERSION }}"
+    echo "Attempting to delete previous tag: $PREVIOUS_TAG"
+    # Add your command to delete the tag here, for example:
+    git tag -d "$PREVIOUS_TAG"
+    git push --delete origin "$PREVIOUS_TAG"
 
-    - name: Zip the folder
-      run: zip -r ${FOLDER_PATH}.zip ${FOLDER_PATH}/
-      shell: bash
+- name: Increment version and create tag
+  id: new_version
+  run: |
+    VERSION=${{ steps.versioning.outputs.version }}
+    NEW_VERSION=$((VERSION + 1))
+    echo "New version: $NEW_VERSION"
+    echo "::set-output name=version::$NEW_VERSION"
+    NEW_TAG="${FOLDER_PATH}-v${NEW_VERSION}"
+    echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
 
-    - name: Fetch all tags
-      run: git fetch --tags
+- name: Create Release
+  id: create_release
+  uses: actions/create-release@v1
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  with:
+    tag_name: ${{ env.NEW_TAG }}
+    release_name: Release ${{ env.NEW_TAG }}
+    draft: false
+    prerelease: false
+    body: |
+      Changes in this Release:
+      - $(git log -1 --pretty=format:"%b")
 
-    - name: Get the highest current version
-      id: versioning
-      run: |
-        HIGHEST_TAG=$(git tag --list "${FOLDER_PATH}-v*" --sort=-v:refname | head -n 1 | sed "s|${FOLDER_PATH}-v||")
-        if [[ -z "$HIGHEST_TAG" ]]; then
-          HIGHEST_TAG=0
-        fi
-        echo "Highest existing tag version: $HIGHEST_TAG"
-        echo "::set-output name=version::$HIGHEST_TAG"
-        PREVIOUS_VERSION=$HIGHEST_TAG
-        echo "PREVIOUS_VERSION=$PREVIOUS_VERSION" >> $GITHUB_ENV
-
-    - name: Increment version and create tag
-      id: new_version
-      run: |
-        VERSION=${{ steps.versioning.outputs.version }}
-        NEW_VERSION=$((VERSION + 1))
-        echo "New version: $NEW_VERSION"
-        echo "::set-output name=version::$NEW_VERSION"
-        NEW_TAG="${FOLDER_PATH}-v${NEW_VERSION}"
-        echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
-
-    - name: Fetch commit messages
-      id: commit_messages
-      run: |
-        if [ ${{ env.PREVIOUS_VERSION }} -eq 0 ]; then
-          # If this is the first release, just use the last commit message
-          COMMIT_MESSAGES=$(git log -1 --pretty=format:"%s")
-        else
-          # Fetch commit messages since the last release
-          COMMIT_MESSAGES=$(git log ${FOLDER_PATH}-v${{ env.PREVIOUS_VERSION }}..HEAD --pretty=format:"%s" -- ${FOLDER_PATH})
-        fi
-        # Format commit messages for the release body
-        COMMIT_MESSAGES=$(echo "$COMMIT_MESSAGES" | sed ':a;N;$!ba;s/\n/\\n- /g')
-        echo "COMMIT_MESSAGES=$COMMIT_MESSAGES" >> $GITHUB_ENV
-
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ env.NEW_TAG }}
-        release_name: Release ${{ env.NEW_TAG }}
-        draft: false
-        prerelease: false
-        body: |
-          Changes in this Release:
-          - ${{ env.COMMIT_MESSAGES }}
-
-    - name: Upload Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./${{ env.FOLDER_PATH }}.zip
-        asset_name: ${{ env.FOLDER_PATH }}-v${{ steps.new_version.outputs.version }}.zip
-        asset_content_type: application/zip
-        
-    - name: Delete previous tag if exists (locally and remotely)
-      run: |
-        PREVIOUS_TAG="${FOLDER_PATH}-v${{ env.PREVIOUS_VERSION }}"
-        echo "Attempting to delete previous tag: $PREVIOUS_TAG"
-        # Add your command to delete the tag here, for example:
-        git tag -d "$PREVIOUS_TAG" || true
-        git push --delete origin "$PREVIOUS_TAG" || true
+- name: Upload Release Asset
+  uses: actions/upload-release-asset@v1
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  with:
+    upload_url: ${{ steps.create_release.outputs.upload_url }}
+    asset_path: ./${{ env.FOLDER_PATH }}.zip
+    asset_name: ${{ env.FOLDER_PATH }}-v${{ steps.new_version.outputs.version }}.zip
+    asset_content_type: application/zip

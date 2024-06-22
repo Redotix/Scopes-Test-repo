@@ -33,6 +33,8 @@ jobs:
         fi
         echo "Highest existing tag version: $HIGHEST_TAG"
         echo "::set-output name=version::$HIGHEST_TAG"
+        PREVIOUS_VERSION=$HIGHEST_TAG
+        echo "PREVIOUS_VERSION=$PREVIOUS_VERSION" >> $GITHUB_ENV
 
     - name: Increment version and create tag
       id: new_version
@@ -46,17 +48,14 @@ jobs:
 
     - name: Delete previous tag if exists (locally and remotely)
       run: |
-        NEW_VERSION=${{ steps.new_version.outputs.version }}
-        NEW_TAG="${FOLDER_PATH}-v${NEW_VERSION}"
-        if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
-          echo "Deleting existing tag: $NEW_TAG"
-          git tag -d $NEW_TAG
-          git push --delete origin $NEW_TAG
+        PREVIOUS_TAG="${FOLDER_PATH}-v${{ env.PREVIOUS_VERSION }}"
+        echo "Attempting to delete previous tag: $PREVIOUS_TAG"
+        if git rev-parse "$PREVIOUS_TAG" >/dev/null 2>&1; then
+          echo "Deleting existing tag: $PREVIOUS_TAG"
+          git tag -d $PREVIOUS_TAG
+          git push --delete origin $PREVIOUS_TAG
         else
           echo "No existing tag to delete."
-        fi
-      env:
-        NEW_TAG: ${{ env.NEW_TAG }}
 
     - name: Create Release
       id: create_release

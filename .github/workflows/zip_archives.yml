@@ -1,7 +1,9 @@
 name: Zip and Release Specific Folder
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
   build-and-release:

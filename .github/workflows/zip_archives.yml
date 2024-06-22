@@ -36,6 +36,20 @@ jobs:
         echo "::set-output name=version::$HIGHEST_TAG"
         PREVIOUS_VERSION=$HIGHEST_TAG
         echo "PREVIOUS_VERSION=$PREVIOUS_VERSION" >> $GITHUB_ENV
+        
+    - name: Fetch commit messages
+      id: commit_messages
+      run: |
+        if [ ${{ env.PREVIOUS_VERSION }} -eq 0 ]; then
+          # If this is the first release, just use the last commit message
+          COMMIT_MESSAGES=$(git log -1 --pretty=format:"%s")
+        else
+          # Fetch commit messages since the last release
+          COMMIT_MESSAGES=$(git log ${FOLDER_PATH}-v${{ env.PREVIOUS_VERSION }}..HEAD --pretty=format:"%s" -- ${FOLDER_PATH})
+        fi
+        # Format commit messages for the release body
+        COMMIT_MESSAGES=$(echo "$COMMIT_MESSAGES" | sed ':a;N;$!ba;s/\n/\\n- /g')
+        echo "COMMIT_MESSAGES=$COMMIT_MESSAGES" >> $GITHUB_ENV
     
     - name: Delete previous tag if exists (locally and remotely)
       run: |
@@ -54,20 +68,6 @@ jobs:
         echo "::set-output name=version::$NEW_VERSION"
         NEW_TAG="${FOLDER_PATH}-v${NEW_VERSION}"
         echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
-
-    - name: Fetch commit messages
-      id: commit_messages
-      run: |
-        if [ ${{ env.PREVIOUS_VERSION }} -eq 0 ]; then
-          # If this is the first release, just use the last commit message
-          COMMIT_MESSAGES=$(git log -1 --pretty=format:"%s")
-        else
-          # Fetch commit messages since the last release
-          COMMIT_MESSAGES=$(git log ${FOLDER_PATH}-v${{ env.PREVIOUS_VERSION }}..HEAD --pretty=format:"%s" -- ${FOLDER_PATH})
-        fi
-        # Format commit messages for the release body
-        COMMIT_MESSAGES=$(echo "$COMMIT_MESSAGES" | sed ':a;N;$!ba;s/\n/\\n- /g')
-        echo "COMMIT_MESSAGES=$COMMIT_MESSAGES" >> $GITHUB_ENV
 
     - name: Create Release
       id: create_release

@@ -46,6 +46,8 @@ jobs:
 
     - name: Delete previous tag if exists (locally and remotely)
       run: |
+        NEW_VERSION=${{ steps.new_version.outputs.version }}
+        NEW_TAG="${FOLDER_PATH}-v${NEW_VERSION}"
         if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
           echo "Deleting existing tag: $NEW_TAG"
           git tag -d $NEW_TAG

@@ -37,10 +37,11 @@ jobs:
     - name: Increment version and create tag
       id: new_version
       run: |
-        VERSION=$(( ${HIGHEST_TAG} + 1 ))
-        echo "New version: $VERSION"
-        echo "::set-output name=version::$VERSION"
-        NEW_TAG="${FOLDER_PATH}-v${VERSION}"
+        VERSION=${{ steps.versioning.outputs.version }}
+        NEW_VERSION=$((VERSION + 1))
+        echo "New version: $NEW_VERSION"
+        echo "::set-output name=version::$NEW_VERSION"
+        NEW_TAG="${FOLDER_PATH}-v${NEW_VERSION}"
         echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
 
     - name: Delete previous tag if exists (locally and remotely)

@@ -55,6 +55,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }} # This is required for the asset upload
-        asset_path:./Compat2.zip
+        asset_path: ./Compat2.zip
         asset_name: Compat2.zip
         asset_content_type: application/zip

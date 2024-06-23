@@ -20,8 +20,8 @@ jobs:
 
     - name: Zip the folder
       run: |
-        cd $FOLDER_PATH
-        zip -r ../${FOLDER_PATH##*/}.zip ./
+        cd ${FOLDER_PATH%/*}
+        zip -r ${FOLDER_PATH##*/}.zip ${FOLDER_PATH##*/}
       shell: bash
 
     - name: Fetch all tags

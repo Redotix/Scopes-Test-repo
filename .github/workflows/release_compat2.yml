@@ -19,7 +19,9 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Zip the folder
-      run: zip -r ${FOLDER_PATH}.zip ./
+      run: run: |
+        cd $FOLDER_PATH
+        zip -r ../${FOLDER_PATH##*/}.zip ./
       shell: bash
 
     - name: Fetch all tags

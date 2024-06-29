@@ -14,7 +14,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      MY_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Define your custom token here
+      MY_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Use the GitHub-provided token
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -33,26 +33,28 @@ jobs:
         id: patch_notes
         run: |
           import git
-          import re
           repo = git.Repo('.')
           tags = sorted(repo.tags, key=lambda t: t.commit.committed_datetime)
           current_tag = '${{ github.ref }}'.split('/')[-1]
           current_tag_index = tags.index(repo.tags[current_tag])
-          previous_tag = tags[current_tag_index - 1] if current_tag_index > 0 else None
-          commits = list(repo.iter_commits(f'{previous_tag}..{current_tag}')) if previous_tag else [repo.commit()]
+          previous_tag = tags[current_tag_index - 1].name if current_tag_index > 0 else None
+          commits = list(repo.iter_commits(f'{previous_tag}..{current_tag}')) if previous_tag else list(repo.iter_commits())
           patch_notes = '\n'.join(commit.summary for commit in commits)
           print(f"::set-output name=notes::{patch_notes}")
         shell: python
 
       - name: Zip repository
-        run: zip -r release-${{ github.ref_name }}.zip .
+        run: |
+          REPO_NAME=$(echo ${{ github.repository }} | sed 's/.*\///')
+          zip -r "${REPO_NAME}-${{ github.ref_name }}.zip" .
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: release-${{ github.ref_name }}.zip
+          files: ${{ github.workspace }}/${{ env.REPO_NAME }}-${{ github.ref_name }}.zip
           tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }} - ${{ github.ref_name }}
+          name: ${{ github.repository }} ${{ github.ref_name }}
           body: ${{ steps.patch_notes.outputs.notes }}
         env:
           GITHUB_TOKEN: ${{ env.MY_GITHUB_TOKEN }}
+          REPO_NAME: ${{ github.repository }}

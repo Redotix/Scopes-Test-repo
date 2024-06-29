@@ -1,0 +1,51 @@
+name: Release on Tag
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0 # Fetch all history so that we can generate patch notes
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install GitPython
+        run: pip install GitPython
+
+      - name: Generate patch notes
+        id: patch_notes
+        run: |
+          import git
+          import re
+          repo = git.Repo('.')
+          tags = sorted(repo.tags, key=lambda t: t.commit.committed_datetime)
+          current_tag = '${{ github.ref }}'.split('/')[-1]
+          current_tag_index = tags.index(repo.tags[current_tag])
+          previous_tag = tags[current_tag_index - 1] if current_tag_index > 0 else None
+          commits = list(repo.iter_commits(f'{previous_tag}..{current_tag}')) if previous_tag else [repo.commit()]
+          patch_notes = '\n'.join(commit.summary for commit in commits)
+          print(f"::set-output name=notes::{patch_notes}")
+        shell: python
+
+      - name: Zip repository
+        run: zip -r ${GITHUB_REF_NAME}.zip .
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: '${{ github.ref_name }}.zip'
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body: ${{ steps.patch_notes.outputs.notes }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

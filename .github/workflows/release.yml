@@ -5,11 +5,15 @@ on:
     tags:
       - '*'
 
+permissions:
+  contents: write
+  issues: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      MY_GITHUB_TOKEN: ${{ secrets.TOKEN }} # Define your custom token here
+      MY_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Define your custom token here
     steps:
       - name: Checkout code
         uses: actions/checkout@v2

@@ -28,7 +28,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install PyGithub
 
-      - name: Zip first folder and create release
+            - name: Zip first folder and create release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -47,11 +47,13 @@ jobs:
               folder_name = dirs[0]
               zip_name = f"{folder_name}-{tag_name}.zip"
 
-              # Zip the folder
+              # Zip the contents inside the folder, not including the folder itself
               with zipfile.ZipFile(zip_name, 'w', zipfile.ZIP_DEFLATED) as zipf:
                   for root, _, files in os.walk(folder_name):
                       for file in files:
-                          zipf.write(os.path.join(root, file), os.path.relpath(os.path.join(root, file), os.path.join(folder_name, '..')))
+                          file_path = os.path.join(root, file)
+                          arcname = os.path.relpath(file_path, folder_name)
+                          zipf.write(file_path, arcname)
 
               # Upload the zip file to a new release
               release = repo.create_git_release(tag=tag_name, name=tag_name, message="", draft=False, prerelease=False)
@@ -62,7 +64,7 @@ jobs:
               previous_tag = tags[1].name if len(tags) > 1 else None
               if previous_tag:
                   comparison = repo.compare(previous_tag, tag_name)
-                  patch_notes = '<br>'.join([commit.commit.message for commit in comparison.commits])
+                  patch_notes = '\n'.join([commit.commit.message for commit in comparison.commits])
                   release.update_release(name=tag_name, message=patch_notes, draft=False, prerelease=False)
           else:
               print("No suitable folder found.")

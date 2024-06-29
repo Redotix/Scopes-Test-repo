@@ -4,14 +4,12 @@ on:
   push:
     tags:
       - '*'
-      
-permissions:
-  contents: write
-  issues: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      MY_GITHUB_TOKEN: ${{ secrets.TOKEN }} # Define your custom token here
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -42,14 +40,14 @@ jobs:
         shell: python
 
       - name: Zip repository
-        run: zip -r ${GITHUB_REF_NAME}.zip .
+        run: zip -r release-${{ github.ref_name }}.zip .
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: '${{ github.ref_name }}.zip'
+          files: release-${{ github.ref_name }}.zip
           tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }} - ${{ github.ref_name }}
           body: ${{ steps.patch_notes.outputs.notes }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ env.MY_GITHUB_TOKEN }}

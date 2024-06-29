@@ -62,7 +62,7 @@ jobs:
               previous_tag = tags[1].name if len(tags) > 1 else None
               if previous_tag:
                   comparison = repo.compare(previous_tag, tag_name)
-                  patch_notes = '\n'.join([commit.commit.message for commit in comparison.commits])
+                  patch_notes = '<br>'.join([commit.commit.message for commit in comparison.commits])
                   release.update_release(name=tag_name, message=patch_notes, draft=False, prerelease=False)
           else:
               print("No suitable folder found.")

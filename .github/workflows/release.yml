@@ -1,11 +1,10 @@
-name: Release on Tag
+name: Create Release
 
 on:
   push:
     tags:
       - '*'
-  workflow_dispatch:
-    
+      
 permissions:
   contents: write
   issues: write
@@ -13,48 +12,59 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      MY_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Use the GitHub-provided token
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
         with:
-          fetch-depth: 0 # Fetch all history so that we can generate patch notes
+          fetch-depth: 0 # Fetch all history for all tags and branches
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v2
         with:
           python-version: '3.x'
 
-      - name: Install GitPython
-        run: pip install GitPython
-
-      - name: Generate patch notes
-        id: patch_notes
+      - name: Install dependencies
         run: |
-          import git
-          repo = git.Repo('.')
-          tags = sorted(repo.tags, key=lambda t: t.commit.committed_datetime)
-          current_tag = '${{ github.ref }}'.split('/')[-1]
-          current_tag_index = tags.index(repo.tags[current_tag])
-          previous_tag = tags[current_tag_index - 1].name if current_tag_index > 0 else None
-          commits = list(repo.iter_commits(f'{previous_tag}..{current_tag}')) if previous_tag else list(repo.iter_commits())
-          patch_notes = '\n'.join(commit.summary for commit in commits)
-          print(f"::set-output name=notes::{patch_notes}")
-        shell: python
+          python -m pip install --upgrade pip
+          pip install PyGithub
 
-      - name: Zip repository
-        run: |
-          REPO_NAME=$(echo ${{ github.repository }} | sed 's/.*\///')
-          zip -r "${REPO_NAME}-${{ github.ref_name }}.zip" .
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: ${{ github.workspace }}/${{ env.REPO_NAME }}-${{ github.ref_name }}.zip
-          tag_name: ${{ github.ref_name }}
-          name: ${{ github.repository }} ${{ github.ref_name }}
-          body: ${{ steps.patch_notes.outputs.notes }}
+      - name: Zip first folder and create release
         env:
-          GITHUB_TOKEN: ${{ env.MY_GITHUB_TOKEN }}
-          REPO_NAME: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          import os
+          import zipfile
+          from github import Github
+
+          # Initialize GitHub API
+          g = Github(os.getenv('GITHUB_TOKEN'))
+          repo = g.get_repo(os.getenv('GITHUB_REPOSITORY'))
+          tag_name = os.getenv('GITHUB_REF').split('/')[-1]
+
+          # Find the first folder not starting with "."
+          dirs = [d for d in os.listdir('.') if os.path.isdir(d) and not d.startswith('.')]
+          if dirs:
+              folder_name = dirs[0]
+              zip_name = f"{folder_name}-{tag_name}.zip"
+
+              # Zip the folder
+              with zipfile.ZipFile(zip_name, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                  for root, _, files in os.walk(folder_name):
+                      for file in files:
+                          zipf.write(os.path.join(root, file), os.path.relpath(os.path.join(root, file), os.path.join(folder_name, '..')))
+
+              # Upload the zip file to a new release
+              release = repo.create_git_release(tag=tag_name, name=tag_name, message="", draft=False, prerelease=False)
+              release.upload_asset(zip_name)
+
+              # Generate patch notes
+              tags = sorted(repo.get_tags(), key=lambda t: t.commit.commit.author.date, reverse=True)
+              previous_tag = tags[1].name if len(tags) > 1 else None
+              if previous_tag:
+                  comparison = repo.compare(previous_tag, tag_name)
+                  patch_notes = '\n'.join([commit.commit.message for commit in comparison.commits])
+                  release.update_release(name=tag_name, message=patch_notes, draft=False, prerelease=False)
+          else:
+              print("No suitable folder found.")
+
+        shell: python
